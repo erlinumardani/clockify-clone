@@ -91,7 +91,7 @@ export default function SettingsPage() {
 
         <section className="ck-card space-y-3 p-5">
           <h2 className="text-xs font-medium uppercase tracking-wide text-ck-muted">Data</h2>
-          <p className="text-sm text-[#666]">Everything in this workspace is stored in your browser's local storage. Export a backup, import one, or reset to the demo data.</p>
+          <p className="text-sm text-[#666]">Everything in this workspace is stored in Supabase under your account. Export a backup, import one, or reset to the demo data.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={exportJson}><Download size={15} /> Export JSON</Button>
             <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={15} /> Import JSON</Button>

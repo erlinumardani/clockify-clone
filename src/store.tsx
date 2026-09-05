@@ -1,17 +1,18 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppState, Client, EntryDraft, Member, Project, Settings, Tag, Task, TimeEntry } from './types'
 import { createSeedState } from './lib/seed'
+import { loadState, persist } from './lib/db'
+import type { AuthUser } from './auth'
 
-const STORAGE_KEY = 'clockify-clone:v1'
 const uid = () => crypto.randomUUID()
 
-type Action =
+export type Action =
   | { type: 'entry/add'; entry: TimeEntry }
   | { type: 'entry/update'; id: string; patch: Partial<TimeEntry> }
   | { type: 'entry/delete'; id: string }
   | { type: 'entry/deleteMany'; ids: string[] }
-  | { type: 'timer/start'; draft: EntryDraft; userId: string }
-  | { type: 'timer/stop' }
+  | { type: 'timer/start'; entry: TimeEntry }
+  | { type: 'timer/stop'; at: string }
   | { type: 'project/add'; project: Project }
   | { type: 'project/update'; id: string; patch: Partial<Project> }
   | { type: 'project/delete'; id: string }
@@ -30,7 +31,7 @@ type Action =
   | { type: 'settings/update'; patch: Partial<Settings> }
   | { type: 'state/replace'; state: AppState }
 
-function reducer(state: AppState, a: Action): AppState {
+export function reducer(state: AppState, a: Action): AppState {
   switch (a.type) {
     case 'entry/add':
       return { ...state, entries: [a.entry, ...state.entries] }
@@ -43,16 +44,12 @@ function reducer(state: AppState, a: Action): AppState {
       return { ...state, entries: state.entries.filter((e) => !set.has(e.id)) }
     }
     case 'timer/start': {
-      const now = new Date().toISOString()
       // stop anything already running first
-      const entries = state.entries.map((e) => (e.end === null ? { ...e, end: now } : e))
-      const entry: TimeEntry = { id: uid(), ...a.draft, start: now, end: null, userId: a.userId }
-      return { ...state, entries: [entry, ...entries] }
+      const entries = state.entries.map((e) => (e.end === null ? { ...e, end: a.entry.start } : e))
+      return { ...state, entries: [a.entry, ...entries] }
     }
-    case 'timer/stop': {
-      const now = new Date().toISOString()
-      return { ...state, entries: state.entries.map((e) => (e.end === null ? { ...e, end: now } : e)) }
-    }
+    case 'timer/stop':
+      return { ...state, entries: state.entries.map((e) => (e.end === null ? { ...e, end: a.at } : e)) }
     case 'project/add':
       return { ...state, projects: [...state.projects, a.project] }
     case 'project/update':
@@ -113,25 +110,14 @@ function reducer(state: AppState, a: Action): AppState {
   }
 }
 
-function loadInitial(): AppState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as AppState
-      if (parsed && parsed.version === 1 && Array.isArray(parsed.entries)) return parsed
-    }
-  } catch {
-    /* ignore corrupt storage */
-  }
-  return createSeedState()
-}
-
 interface StoreApi {
   state: AppState
   dispatch: (a: Action) => void
   now: number
   running: TimeEntry | null
   currentUser: Member
+  syncError: string | null
+  clearSyncError: () => void
   projectById: (id: string | null) => Project | undefined
   clientById: (id: string | null) => Client | undefined
   tagById: (id: string) => Tag | undefined
@@ -152,18 +138,35 @@ interface StoreApi {
 
 const StoreContext = createContext<StoreApi | null>(null)
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadInitial)
+export function StoreProvider({ user, children }: { user: AuthUser; children: ReactNode }) {
+  const [state, setState] = useState<AppState | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    } catch {
-      /* quota exceeded etc. */
-    }
-  }, [state])
+    let cancelled = false
+    setState(null)
+    setLoadError(null)
+    loadState(user.id, { name: user.name, email: user.email })
+      .then((s) => { if (!cancelled) setState(s) })
+      .catch((e: Error) => { if (!cancelled) setLoadError(e.message) })
+    return () => { cancelled = true }
+  }, [user.id, user.name, user.email, reloadKey])
 
-  const running = useMemo(() => state.entries.find((e) => e.end === null) ?? null, [state.entries])
+  // writes are applied optimistically, then pushed to Supabase in order
+  const queue = useRef<Promise<void>>(Promise.resolve())
+  const dispatch = useCallback((a: Action) => {
+    setState((s) => (s ? reducer(s, a) : s))
+    queue.current = queue.current
+      .then(() => persist(user.id, a))
+      .catch((e: Error) => {
+        console.error('sync failed', a.type, e)
+        setSyncError(`Could not save "${a.type}": ${e.message}`)
+      })
+  }, [user.id])
+
+  const running = useMemo(() => state?.entries.find((e) => e.end === null) ?? null, [state?.entries])
 
   // 1s tick only while a timer is running
   const [now, setNow] = useState(() => Date.now())
@@ -178,15 +181,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     document.title = running ? `${formatTitle(now - new Date(running.start).getTime())} · Clockify` : 'Clockify'
   }, [running, now])
 
-  const api = useMemo<StoreApi>(() => {
+  const api = useMemo<StoreApi | null>(() => {
+    if (!state) return null
     const projectById = (id: string | null) => (id ? state.projects.find((p) => p.id === id) : undefined)
     const clientById = (id: string | null) => (id ? state.clients.find((c) => c.id === id) : undefined)
     const tagById = (id: string) => state.tags.find((t) => t.id === id)
     const taskById = (projectId: string | null, taskId: string | null) =>
       taskId ? projectById(projectId)?.tasks.find((t) => t.id === taskId) : undefined
-    const currentUser = state.members.find((m) => m.id === state.currentUserId) ?? state.members[0]
+    const currentUser = state.members.find((m) => m.id === state.currentUserId) ?? state.members[0] ?? {
+      id: '', name: user.name, email: user.email, role: 'Owner' as const, status: 'Active' as const, hourlyRate: null,
+    }
+    const start = (draft: EntryDraft) =>
+      dispatch({ type: 'timer/start', entry: { id: uid(), ...draft, start: new Date().toISOString(), end: null, userId: state.currentUserId } })
     return {
-      state, dispatch, now, running, currentUser,
+      state, dispatch, now, running, currentUser, syncError,
+      clearSyncError: () => setSyncError(null),
       projectById, clientById, tagById, taskById,
       rateFor: (e) => {
         if (!e.billable) return 0
@@ -196,16 +205,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (m?.hourlyRate != null) return m.hourlyRate
         return state.settings.hourlyRate
       },
-      startTimer: (draft) => dispatch({ type: 'timer/start', draft, userId: state.currentUserId }),
-      stopTimer: () => dispatch({ type: 'timer/stop' }),
-      continueEntry: (e) =>
-        dispatch({
-          type: 'timer/start',
-          draft: { description: e.description, projectId: e.projectId, taskId: e.taskId, tagIds: e.tagIds, billable: e.billable },
-          userId: state.currentUserId,
-        }),
-      addEntry: ({ start, end, ...draft }) => {
-        const entry: TimeEntry = { id: uid(), ...draft, start: start.toISOString(), end: end.toISOString(), userId: state.currentUserId }
+      startTimer: start,
+      stopTimer: () => dispatch({ type: 'timer/stop', at: new Date().toISOString() }),
+      continueEntry: (e) => start({ description: e.description, projectId: e.projectId, taskId: e.taskId, tagIds: e.tagIds, billable: e.billable }),
+      addEntry: ({ start: s, end, ...draft }) => {
+        const entry: TimeEntry = { id: uid(), ...draft, start: s.toISOString(), end: end.toISOString(), userId: state.currentUserId }
         dispatch({ type: 'entry/add', entry })
         return entry
       },
@@ -226,11 +230,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'tag/add', tag })
         return tag
       },
-      resetData: () => dispatch({ type: 'state/replace', state: createSeedState() }),
+      resetData: () => dispatch({ type: 'state/replace', state: createSeedState({ name: user.name, email: user.email }) }),
       importData: (s) => dispatch({ type: 'state/replace', state: s }),
     }
-  }, [state, now, running])
+  }, [state, now, running, syncError, dispatch, user.name, user.email])
 
+  if (loadError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="text-base text-[#666]">Could not load your workspace</div>
+        <div className="max-w-md text-sm text-ck-red">{loadError}</div>
+        <button type="button" className="rounded-sm bg-ck-blue px-4 py-2 text-sm font-medium uppercase text-white" onClick={() => setReloadKey((k) => k + 1)}>Retry</button>
+      </div>
+    )
+  }
+  if (!api) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-ck-muted">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-ck-border border-t-ck-blue" />
+          Loading your workspace…
+        </div>
+      </div>
+    )
+  }
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>
 }
 

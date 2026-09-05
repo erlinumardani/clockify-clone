@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3, Briefcase, Calendar, ChevronDown, Clock, FolderKanban, LayoutDashboard,
-  Menu, Settings, Square, Table2, Tag, Users, X, HelpCircle,
+  Menu, Settings, Square, Table2, Tag, Users, X, HelpCircle, LogOut, AlertTriangle,
 } from 'lucide-react'
 import { useStore } from '../store'
-import { Avatar, cn } from './ui'
+import { useAuth } from '../auth'
+import { Avatar, Popover, cn } from './ui'
 import { entrySeconds, formatDuration } from '../lib/time'
 
 const nav = [
@@ -27,7 +28,8 @@ const nav = [
 ]
 
 export default function Layout() {
-  const { state, running, now, currentUser, stopTimer } = useStore()
+  const { state, running, now, currentUser, stopTimer, syncError, clearSyncError } = useStore()
+  const { user, signOut } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const showMiniTimer = running && !location.pathname.startsWith('/tracker')
@@ -119,13 +121,39 @@ export default function Layout() {
                 </button>
               </NavLink>
             )}
-            <div className="flex items-center gap-2">
-              <span className="hidden text-sm text-[#555] md:inline">{currentUser.name}</span>
-              <Avatar name={currentUser.name} size={30} />
-            </div>
+            <Popover
+              align="right"
+              width={240}
+              trigger={() => (
+                <button type="button" className="flex items-center gap-2 rounded-sm px-1 py-0.5 hover:bg-black/5">
+                  <span className="hidden text-sm text-[#555] md:inline">{currentUser.name}</span>
+                  <Avatar name={currentUser.name} size={30} />
+                </button>
+              )}
+            >
+              {() => (
+                <div className="py-1 text-sm">
+                  <div className="border-b border-ck-border-light px-3 py-2">
+                    <div className="font-medium">{user.name}</div>
+                    <div className="truncate text-xs text-ck-muted">{user.email}</div>
+                  </div>
+                  <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-ck-bg" onClick={() => signOut()}>
+                    <LogOut size={15} /> Log out
+                  </button>
+                </div>
+              )}
+            </Popover>
           </div>
         </header>
 
+        {syncError && (
+          <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-ck-red">
+            <AlertTriangle size={16} />
+            <span className="min-w-0 flex-1 truncate">{syncError}</span>
+            <button type="button" className="text-xs font-medium uppercase hover:underline" onClick={() => window.location.reload()}>Reload</button>
+            <button type="button" className="text-xs font-medium uppercase hover:underline" onClick={clearSyncError}>Dismiss</button>
+          </div>
+        )}
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1280px] p-4 md:p-6">
             <Outlet />

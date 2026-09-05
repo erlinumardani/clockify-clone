@@ -3,7 +3,7 @@ import type { AppState, Client, Member, Project, Tag, TimeEntry } from '../types
 
 const uid = () => crypto.randomUUID()
 
-// tiny seeded PRNG so the demo data is stable across reloads of a fresh workspace
+// tiny seeded PRNG so the demo data is stable across resets
 function rng(seed: number) {
   let s = seed
   return () => {
@@ -12,8 +12,13 @@ function rng(seed: number) {
   }
 }
 
-export function createSeedState(): AppState {
-  const me: Member = { id: uid(), name: 'Erlin', email: 'jellyfishwork7@gmail.com', role: 'Owner', status: 'Active', hourlyRate: null }
+export interface SeedUser {
+  name: string
+  email: string
+}
+
+export function createSeedState(user: SeedUser = { name: 'Me', email: 'me@example.com' }): AppState {
+  const me: Member = { id: uid(), name: user.name, email: user.email, role: 'Owner', status: 'Active', hourlyRate: null }
   const members: Member[] = [
     me,
     { id: uid(), name: 'Ayu Lestari', email: 'ayu@example.com', role: 'Admin', status: 'Active', hourlyRate: 45 },
@@ -109,7 +114,7 @@ export function createSeedState(): AppState {
     version: 1,
     clients, projects, tags, entries, members,
     settings: {
-      workspaceName: "Erlin's workspace",
+      workspaceName: `${user.name}'s workspace`,
       currency: 'USD',
       hourlyRate: 40,
       weekStart: 1,

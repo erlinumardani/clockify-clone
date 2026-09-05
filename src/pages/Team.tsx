@@ -84,7 +84,7 @@ export default function Team() {
             <label className="ck-label">Name (optional)</label>
             <input className="ck-input" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && invite()} />
           </div>
-          <p className="text-xs text-ck-muted">This demo stores everything locally, so no email is actually sent. The member appears as “Pending” until you mark them active.</p>
+          <p className="text-xs text-ck-muted">This demo does not send invitation emails. The member appears as “Pending” until you mark them active.</p>
         </div>
       </Modal>
     </div>
