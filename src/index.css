@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --color-ck-blue: #03a9f4;
+  --color-ck-blue-dark: #0288d1;
+  --color-ck-blue-light: #e6f6fd;
+  --color-ck-bg: #f2f6f8;
+  --color-ck-border: #c6d2d9;
+  --color-ck-border-light: #e4eaee;
+  --color-ck-text: #333333;
+  --color-ck-muted: #999999;
+  --color-ck-red: #f44336;
+  --color-ck-red-dark: #d32f2f;
+  --color-ck-green: #4caf50;
+  --color-ck-sidebar: #ffffff;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ck-bg);
+  color: var(--color-ck-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c6d2d9 transparent;
+}
+
+input, textarea, select, button {
+  font: inherit;
+  color: inherit;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #999;
+}
+
+.ck-input {
+  @apply h-9 w-full rounded-sm border border-ck-border bg-white px-3 text-sm text-ck-text outline-none transition-colors focus:border-ck-blue;
+}
+
+.ck-select {
+  @apply h-9 rounded-sm border border-ck-border bg-white px-2 text-sm outline-none focus:border-ck-blue;
+}
+
+.ck-card {
+  @apply rounded-sm border border-ck-border-light bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)];
+}
+
+.ck-label {
+  @apply mb-1 block text-xs font-medium uppercase tracking-wide text-ck-muted;
+}
+
+.ck-table th {
+  @apply bg-ck-bg px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-[#666] border-b border-ck-border-light;
+}
+.ck-table td {
+  @apply px-4 py-2.5 border-b border-ck-border-light align-middle;
+}
+.ck-table tr:last-child td {
+  border-bottom: 0;
+}
+
+@keyframes ck-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.ck-pulse { animation: ck-pulse 1.4s ease-in-out infinite; }
+
+@keyframes ck-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ck-fade-in { animation: ck-fade-in 0.15s ease-out; }
+
+@keyframes ck-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.ck-grow { transform-origin: bottom; animation: ck-grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
