@@ -1,7 +1,8 @@
 # Clockify clone
 
-A front-end clone of [Clockify](https://clockify.me) built with React 19, TypeScript, Vite and Tailwind CSS v4.
-All data lives in the browser's `localStorage` (no backend), and a fresh workspace is seeded with demo data.
+A clone of [Clockify](https://clockify.me) built with React 19, TypeScript, Vite and Tailwind CSS v4.
+Data is stored in [Supabase](https://supabase.com) (Postgres + Auth): each user signs in with email and password and gets
+their own workspace, isolated by row level security. A fresh workspace is seeded with demo data on first sign-in.
 
 ## Features
 
@@ -18,10 +19,22 @@ All data lives in the browser's `localStorage` (no backend), and a fresh workspa
 
 ```bash
 npm install
+cp .env.example .env.local   # optional: point at your own Supabase project
 npm run dev
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173. Without a `.env.local` the app uses the built-in Supabase project.
+
+## Supabase
+
+The schema lives in the project's migrations (`workspaces`, `members`, `clients`, `projects`, `tasks`, `tags`, `time_entries`),
+all protected by RLS policies of the form `user_id = auth.uid()`. To use your own project, apply the same schema and set
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
+## Deploy
+
+The app is a static Vite build; `vercel.json` rewrites every route to `index.html` for client-side routing.
+Deploy to Vercel by importing the GitHub repository (framework preset: Vite).
 
 ```bash
 npm run build   # type-check + production build into dist/
@@ -33,7 +46,10 @@ npm run preview # serve the production build
 ```
 src/
   types.ts            data model
-  store.tsx           reducer + localStorage persistence + helpers (useStore)
+  store.tsx           reducer + optimistic write-through to Supabase (useStore)
+  auth.tsx            Supabase Auth provider and login / sign-up page
+  lib/supabase.ts     Supabase client
+  lib/db.ts           row mapping, initial load, persistence of each action
   lib/time.ts         duration/time parsing and formatting, date ranges
   lib/seed.ts         demo workspace generator
   components/         Layout, UI kit, ProjectPicker, TagPicker, EntryModal
