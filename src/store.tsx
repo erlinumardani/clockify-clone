@@ -178,7 +178,7 @@ export function StoreProvider({ user, children }: { user: AuthUser; children: Re
   }, [running])
 
   useEffect(() => {
-    document.title = running ? `${formatTitle(now - new Date(running.start).getTime())} · Clockify` : 'Clockify'
+    document.title = running ? `${formatTitle(now - new Date(running.start).getTime())} · Jamify` : 'Jamify'
   }, [running, now])
 
   const api = useMemo<StoreApi | null>(() => {

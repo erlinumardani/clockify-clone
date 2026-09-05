@@ -38,7 +38,7 @@ export default function Layout() {
     <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-ck-border-light bg-ck-sidebar">
       <div className="flex h-14 items-center gap-2 px-5">
         <img src="/favicon.svg" alt="" className="h-7 w-7" />
-        <span className="text-lg font-medium tracking-tight">clockify</span>
+        <span className="text-lg font-medium tracking-tight">jamify</span>
         <button type="button" className="ml-auto text-ck-muted lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu">
           <X size={18} />
         </button>
@@ -77,7 +77,7 @@ export default function Layout() {
           <Settings size={18} strokeWidth={1.75} />
           Settings
         </NavLink>
-        <a href="https://clockify.me/help" target="_blank" rel="noreferrer" className="flex items-center gap-3 border-l-[3px] border-transparent py-2 pl-[17px] pr-4 text-sm text-[#555] hover:bg-black/[0.03]">
+        <a href="https://github.com/erlinumardani/clockify-clone#readme" target="_blank" rel="noreferrer" className="flex items-center gap-3 border-l-[3px] border-transparent py-2 pl-[17px] pr-4 text-sm text-[#555] hover:bg-black/[0.03]">
           <HelpCircle size={18} strokeWidth={1.75} />
           Help
         </a>

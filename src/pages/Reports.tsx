@@ -96,7 +96,7 @@ export default function Reports() {
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     const a = document.createElement('a')
-    a.href = url; a.download = `clockify-report-${toDateKey(from)}_${toDateKey(to)}.csv`; a.click()
+    a.href = url; a.download = `jamify-report-${toDateKey(from)}_${toDateKey(to)}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 

@@ -1,6 +1,6 @@
-# Clockify clone
+# Jamify
 
-A clone of [Clockify](https://clockify.me) built with React 19, TypeScript, Vite and Tailwind CSS v4.
+Jamify is a time tracker inspired by [Clockify](https://clockify.me), built with React 19, TypeScript, Vite and Tailwind CSS v4.
 Data is stored in [Supabase](https://supabase.com) (Postgres + Auth): each user signs in with email and password and gets
 their own workspace, isolated by row level security. A fresh workspace is seeded with demo data on first sign-in.
 

@@ -86,7 +86,7 @@ function AuthPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
           <img src="/favicon.svg" alt="" className="h-8 w-8" />
-          <span className="text-2xl font-medium tracking-tight">clockify</span>
+          <span className="text-2xl font-medium tracking-tight">jamify</span>
         </div>
         <form onSubmit={submit} className="ck-card space-y-4 p-6">
           <h1 className="text-lg font-normal">{mode === 'signin' ? 'Log in' : 'Create your account'}</h1>

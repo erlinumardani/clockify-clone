@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const exportJson = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }))
     const a = document.createElement('a')
-    a.href = url; a.download = 'clockify-workspace.json'; a.click()
+    a.href = url; a.download = 'jamify-workspace.json'; a.click()
     URL.revokeObjectURL(url)
   }
 
